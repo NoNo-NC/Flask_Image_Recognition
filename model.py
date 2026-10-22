@@ -1,23 +1,27 @@
-# Importing required libs
+"""Image preprocessing and model inference for hand-sign digits."""
+
+from pathlib import Path
+
 from keras.models import load_model
 from keras.utils import img_to_array
 import numpy as np
 from PIL import Image
 
-# Loading model
-model = load_model("digit_model.h5")
+MODEL_PATH = Path(__file__).resolve().parent / "digit_model.h5"
+
+model = load_model(str(MODEL_PATH))
 
 
-# Preparing and pre-processing the image
 def preprocess_img(img_path):
-    op_img = Image.open(img_path)
-    img_resize = op_img.resize((224, 224))
-    img2arr = img_to_array(img_resize) / 255.0
-    img_reshape = img2arr.reshape(1, 224, 224, 3)
-    return img_reshape
+    """Convert an image path or stream into a normalized RGB batch."""
+    with Image.open(img_path) as image:
+        resized_image = image.convert("RGB").resize((224, 224))
+        image_array = img_to_array(resized_image) / 255.0
+
+    return image_array.reshape(1, 224, 224, 3)
 
 
-# Predicting function
-def predict_result(predict):
-    pred = model.predict(predict)
-    return np.argmax(pred[0], axis=-1)
+def predict_result(image_batch):
+    """Return the highest-scoring digit class for one image batch."""
+    predictions = model.predict(image_batch)
+    return int(np.argmax(predictions[0], axis=-1))

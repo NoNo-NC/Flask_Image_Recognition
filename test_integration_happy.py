@@ -1,21 +1,27 @@
-# test_integration_happy.py
+"""Tests connecting Flask routes, preprocessing, and rendered responses."""
 
-from io import BytesIO
-import pytest
 
-def test_successful_prediction(client):
-    """Test the successful image upload and prediction."""
-    # Create a mock image file with minimal valid content
-    img_data = BytesIO(b"fake_image_data")
-    img_data.name = "test.jpg"
+def test_home_page(client, prediction_mock):
+    """Display the upload page without running inference."""
+    response = client.get("/")
 
-    # Simulate a file upload to the correct prediction endpoint
+    assert response.status_code == 200
+    assert b"Hand Sign Digit" in response.data
+    prediction_mock.assert_not_called()
+
+
+def test_successful_prediction(client, image_factory, prediction_mock):
+    """Preprocess an image and render the mocked prediction."""
     response = client.post(
-        "/prediction",  # Correct route for prediction
-        data={"file": (img_data, img_data.name)},
-        content_type="multipart/form-data"
+        "/prediction",
+        data={"file": (image_factory(), "test.png")},
     )
 
-    # Assertions
     assert response.status_code == 200
-    assert b"Prediction" in response.data  # Modify this check based on your output
+    assert b">7</h2>" in response.data
+    prediction_mock.assert_called_once()
+
+    image_batch = prediction_mock.call_args.args[0]
+    assert image_batch.shape == (1, 224, 224, 3)
+    assert image_batch.min() >= 0
+    assert image_batch.max() <= 1
